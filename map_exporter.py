@@ -5,6 +5,7 @@ from bpy_extras.io_utils import (ImportHelper, ExportHelper, orientation_helper,
 from mathutils import Matrix
 
 import os
+import struct
 
 bl_info = {
     "name": "Map Exporter",
@@ -17,6 +18,8 @@ bl_info = {
     "support": "COMMUNITY",
     "category": "Import-Export"
 }
+
+MAP_SIGNATURE = 0x0050414D # 'MAP\0'
 
 class Vertex:
     def __init__(self, p, n, uv):
@@ -82,7 +85,13 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     filename_ext = ".map"
 
     def write_file(self, scene):
+        data = bytearray()
+        data += struct.pack("=I", MAP_SIGNATURE) # map_header.signature
+        data += struct.pack("=I", len(scene.mesh_array)) # map_header.mesh_array_count
+        data += struct.pack("=I", 0) # fill with temporary value
+
         f = open(self.filepath, "wb")
+        f.write(data)
         f.close()
 
     def process(self):

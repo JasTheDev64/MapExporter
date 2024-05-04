@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-enum { map_signature = 0x0050414D };
+enum { map_signature = 0x0050414D }; // "MAP\0"
 
 struct map_header 
 {
