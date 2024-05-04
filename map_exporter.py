@@ -39,8 +39,7 @@ class Vertex:
 
 class Polygon:
     def __init__(self):
-        self.index_count = 0
-        self.index_array = []
+        self.indices = []
 
 class Node:
     def __init__(self, name, parent, transform):
@@ -78,6 +77,22 @@ class Scene:
         self.node_array = []
         self.texture_array = []
 
+class Buffer:
+    def __init__(self):
+        self.data = bytearray()
+        self.patch_list = {}
+    
+    def add(data, patch_name = None):
+        if (patch_name) != None:
+            self.patch_list.get(patch_name, []).append(len(self.data))
+        self.data += data
+    
+    def patch(patch_name, value = None):
+        if (patch_name not in self.patch_list):
+            raise Exception("patch name {} not found".format(patch_name))
+        pos = self.patch_list.get(patch_name).pop(0)
+        self.data[pos : pos + 4] = struct.pack("=I", len(self.data) if (value == None) else value)
+
 class Map_Exporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.map"
     bl_label = "Export Map"
@@ -85,13 +100,47 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     filename_ext = ".map"
 
     def write_file(self, scene):
-        data = bytearray()
-        data += struct.pack("=I", MAP_SIGNATURE) # map_header.signature
-        data += struct.pack("=I", len(scene.mesh_array)) # map_header.mesh_array_count
-        data += struct.pack("=I", 0) # fill with temporary value
+        buffer = Buffer()
 
+        buffer.append(struct.pack("=I", MAP_SIGNATURE))
+        buffer.append(struct.pack("=I", 0), "mesh_array_count")
+        buffer.append(struct.pack("=I", 0), "mesh_array_offset")
+        buffer.append(struct.pack("=I", 0), "node_array_count")
+        buffer.append(struct.pack("=I", 0), "node_array_offset")
+        buffer.append(struct.pack("=I", 0), "texture_array_count")
+        buffer.append(struct.pack("=I", 0), "texture_array_offset")
+
+        buffer.patch("mesh_array_count", len(scene.mesh_array))
+        buffer.patch("mesh_array_offset")
+        for mesh in scene.mesh_array:
+            buffer.append(struct.pack("=I", 0), "name_offset")
+            buffer.append(struct.pack("=I", 0), "vertex_array_count")
+            buffer.append(struct.pack("=I", 0), "vertex_array_offset")
+            buffer.append(struct.pack("=I", 0), "polygon_array_count")
+            buffer.append(struct.pack("=I", 0), "polygon_array_offset")
+        
+        for mesh in scene.mesh_array:
+            buffer.patch("name_offset")
+            buffer.append(struct.pack("={}sB".format(len(mesh.name)), mesh.name.encode("utf-8"), 0))
+
+            buffer.patch("vertex_array_count", len(mesh.vertex_set))
+            buffer.patch("vertex_array_offset")
+            for vertex in mesh.vertex_set:
+                f.write(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
+            
+            buffer.patch("polygon_array_count", len(mesh.polygon_array))
+            buffer.patch("polygon_array_offset")
+            for polygon in mesh.polygon_array:
+                f.write(struct.pack("=B{}I".format(len(polygon.indices)), polygon.indices))
+                if (len(polygon.indices) == 3):
+                    f.write(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
+
+        buffer.patch("node_array_count", len(scene.node_array))
+        buffer.patch("node_array_offset")
+        for node in scene.node_array:
+        
         f = open(self.filepath, "wb")
-        f.write(data)
+        f.write(buffer.data)
         f.close()
 
     def process(self):
@@ -125,8 +174,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         index = len(mesh_data.vertex_set)
                         mesh_data.vertex_map[vertex] = index
                         mesh_data.vertex_set.append(vertex)
-                    polygon.index_count += 1
-                    polygon.index_array.append(index)
+                    polygon.indices.append(index)
                 mesh_data.polygon_array.append(polygon)
             
             mesh_map[mesh.name] = len(scene.mesh_array)
