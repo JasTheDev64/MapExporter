@@ -99,6 +99,18 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.map"
     bl_label = "Export Map"
 
+    index_meshes: BoolProperty(
+        name="Index",
+        description="Index all meshes.",
+        default=False
+    )
+
+    triangulate_meshes: BoolProperty(
+        name="Triangulate",
+        description="Triangulate all meshes.",
+        default=False
+    )
+
     filename_ext = ".map"
 
     def write_file(self, scene):
