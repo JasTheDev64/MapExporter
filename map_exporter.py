@@ -22,6 +22,8 @@ bl_info = {
 
 MAP_SIGNATURE = 0x0050414D # 'MAP\0'
 
+MAP_INDEX_FLAG = 0x00000001
+
 class Vertex:
     def __init__(self, p, n, uv):
         self.position = tuple(p)
@@ -117,7 +119,13 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     def write_file(self, scene):
         buffer = Buffer()
 
+        flags = 0
+
+        if self.index_meshes:
+            flags |= MAP_INDEX_FLAG
+
         buffer.add(struct.pack("=I", MAP_SIGNATURE))
+        buffer.add(struct.pack("=I", flags)) # info
         buffer.add(struct.pack("=I", 0), "mesh_array_count")
         buffer.add(struct.pack("=I", 0), "mesh_array_offset")
         buffer.add(struct.pack("=I", 0), "node_array_count")
