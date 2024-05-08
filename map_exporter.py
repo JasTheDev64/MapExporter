@@ -139,17 +139,28 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             print(mesh.name)
             buffer.add(struct.pack("={}sB".format(len(mesh.name)), mesh.name.encode("utf-8"), 0))
 
-            buffer.patch("vertex_array_count", len(mesh.vertex_set))
-            buffer.patch("vertex_array_offset")
-            for vertex in mesh.vertex_set:
-                buffer.add(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
-            
-            buffer.patch("polygon_array_count", len(mesh.polygon_array))
-            buffer.patch("polygon_array_offset")
-            for polygon in mesh.polygon_array:
-                buffer.add(struct.pack("=B{}I".format(len(polygon.indices)), len(polygon.indices), *polygon.indices))
-                if (len(polygon.indices) == 3):
-                    buffer.add(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
+            if self.index_meshes:
+                buffer.patch("vertex_array_count", len(mesh.vertex_set))
+                buffer.patch("vertex_array_offset")
+                for vertex in mesh.vertex_set:
+                    buffer.add(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
+                
+                buffer.patch("polygon_array_count", len(mesh.polygon_array))
+                buffer.patch("polygon_array_offset")
+                for polygon in mesh.polygon_array:
+                    buffer.add(struct.pack("=B{}I".format(len(polygon.indices)), len(polygon.indices), *polygon.indices))
+                    if (len(polygon.indices) == 3):
+                        buffer.add(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
+            else:
+                buffer.patch("vertex_array_count", len(mesh.polygon_array) * 3)
+                buffer.patch("vertex_array_offset")
+
+                for polygon in mesh.polygon_array:
+                    if (len(polygon.indices) != 3):
+                        raise Exception("Unindexed meshes can only have triangles")
+                    for i in range(0, 3):
+                        vertex = mesh.vertex_set[polygon.indices[i]]
+                        buffer.add(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
 
         buffer.patch("node_array_count", len(scene.node_array))
         buffer.patch("node_array_offset")
@@ -196,6 +207,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
 
         for it in bpy.data.meshes:
             mesh = it.copy()
+
             if self.triangulate_meshes:
                 bm = bmesh.new()
                 bm.from_mesh(mesh)
