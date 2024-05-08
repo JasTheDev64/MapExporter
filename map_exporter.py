@@ -2,6 +2,7 @@
 import bpy
 from bpy.props import (BoolProperty, FloatProperty, StringProperty, EnumProperty)
 from bpy_extras.io_utils import (ImportHelper, ExportHelper, orientation_helper, path_reference_mode, axis_conversion)
+import bmesh
 from mathutils import Matrix
 
 import os
@@ -193,7 +194,15 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
         for texture in bpy.data.images:
             scene.texture_array.append(Texture(texture.name, os.path.basename(texture.filepath)))
 
-        for mesh in bpy.data.meshes:
+        for it in bpy.data.meshes:
+            mesh = it.copy()
+            if self.triangulate_meshes:
+                bm = bmesh.new()
+                bm.from_mesh(mesh)
+                bmesh.ops.triangulate(bm, faces=bm.faces)
+                bm.to_mesh(mesh)
+                bm.free()
+
             uv_array = mesh.uv_layers.active.uv
 
             mesh_data = Mesh(mesh.name)
