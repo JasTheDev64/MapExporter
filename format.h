@@ -8,6 +8,15 @@ enum { map_signature = 0x0050414D }; // "MAP\0"
 struct map_header 
 {
     uint32_t signature;
+    union
+    {
+        struct
+        {
+            uint32_t indexed  :  1;
+            uint32_t reserved : 31;
+        };
+        uint32_t bits;
+    } info;
     uint32_t mesh_array_count;
     uint32_t mesh_array_offset;
     uint32_t node_array_count;
