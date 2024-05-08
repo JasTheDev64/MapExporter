@@ -225,7 +225,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
 
             uv_array = mesh.uv_layers.active.uv
 
-            mesh_data = Mesh(mesh.name)
+            mesh_data = Mesh(it.name)
             for p in mesh.polygons:
                 if p.loop_total != 3 and p.loop_total != 4:
                     raise Exception("mesh has unsupported polygons (count={})".format(p.loop_total))
