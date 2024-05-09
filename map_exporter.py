@@ -79,6 +79,8 @@ class Scene:
         self.mesh_array = []
         self.node_array = []
         self.texture_array = []
+        self.min_vertex = [0, 0, 0]
+        self.max_vertex = [0, 0, 0]
 
 class Buffer:
     def __init__(self):
@@ -111,6 +113,12 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     triangulate_meshes: BoolProperty(
         name="Triangulate",
         description="Triangulate all meshes.",
+        default=False
+    )
+    
+    normalize_meshes: BoolProperty(
+        name="Normalize",
+        description="Normalize the coordinates to the range [-1, +1]",
         default=False
     )
 
@@ -151,7 +159,14 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                 buffer.patch("vertex_array_count", len(mesh.vertex_set))
                 buffer.patch("vertex_array_offset")
                 for vertex in mesh.vertex_set:
-                    buffer.add(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
+                    position = vertex.position
+                    if self.normalize_meshes:
+                        position = (
+                            position[0] / (scene.max_vertex[0] - scene.min_vertex[0]),
+                            position[1] / (scene.max_vertex[1] - scene.min_vertex[1]),
+                            position[2] / (scene.max_vertex[2] - scene.min_vertex[2])
+                        )
+                    buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
                 
                 buffer.patch("polygon_array_count", len(mesh.polygon_array))
                 buffer.patch("polygon_array_offset")
@@ -235,6 +250,14 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                     n = mesh.loops[i].normal
                     v = mesh.vertices[mesh.loops[i].vertex_index]
                     vertex = None
+
+                    scene.min_vertex[0] = min(scene.min_vertex[0], v.co.x)
+                    scene.min_vertex[1] = min(scene.min_vertex[1], v.co.y)
+                    scene.min_vertex[2] = min(scene.min_vertex[2], v.co.z)
+
+                    scene.max_vertex[0] = max(scene.max_vertex[0], v.co.x)
+                    scene.max_vertex[1] = max(scene.max_vertex[1], v.co.y)
+                    scene.max_vertex[2] = max(scene.max_vertex[2], v.co.z)
 
                     vertex = Vertex(v.co, n, uv_array[i].vector)
                     vertex.finalize()
