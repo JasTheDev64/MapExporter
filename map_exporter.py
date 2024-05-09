@@ -183,7 +183,14 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         raise Exception("Unindexed meshes can only have triangles")
                     for i in range(0, 3):
                         vertex = mesh.vertex_set[polygon.indices[i]]
-                        buffer.add(struct.pack("=3f3f2f", *vertex.position, *vertex.normal, *vertex.uv))
+                        position = vertex.position
+                        if self.normalize_meshes:
+                            position = (
+                                position[0] / (scene.max_vertex[0] - scene.min_vertex[0]),
+                                position[1] / (scene.max_vertex[1] - scene.min_vertex[1]),
+                                position[2] / (scene.max_vertex[2] - scene.min_vertex[2])
+                            )
+                        buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
 
         buffer.patch("node_array_count", len(scene.node_array))
         buffer.patch("node_array_offset")
