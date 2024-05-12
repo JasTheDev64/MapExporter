@@ -233,7 +233,8 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
         node_map = {}
 
         for texture in bpy.data.images:
-            scene.texture_array.append(Texture(texture.name, os.path.basename(texture.filepath)))
+            if (texture.name != "Render Result"):
+                scene.texture_array.append(Texture(texture.name, os.path.basename(texture.filepath)))
 
         for it in bpy.data.meshes:
             mesh = it.copy()
