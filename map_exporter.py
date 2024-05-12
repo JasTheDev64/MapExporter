@@ -61,6 +61,8 @@ class Mesh:
         self.vertex_set = []
         self.vertex_map = {}
         self.polygon_array = []
+        self.min_vertex = [0, 0, 0]
+        self.max_vertex = [0, 0, 0]
 
 class Node:
     def __init__(self, name, parent_index, mesh_index, matrix):
@@ -79,8 +81,6 @@ class Scene:
         self.mesh_array = []
         self.node_array = []
         self.texture_array = []
-        self.min_vertex = [0, 0, 0]
-        self.max_vertex = [0, 0, 0]
 
 class Buffer:
     def __init__(self):
@@ -162,9 +162,9 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                     position = vertex.position
                     if self.normalize_meshes:
                         position = (
-                            position[0] / (scene.max_vertex[0] - scene.min_vertex[0]),
-                            position[1] / (scene.max_vertex[1] - scene.min_vertex[1]),
-                            position[2] / (scene.max_vertex[2] - scene.min_vertex[2])
+                            position[0] / (mesh.max_vertex[0] - mesh.min_vertex[0]),
+                            position[1] / (mesh.max_vertex[1] - mesh.min_vertex[1]),
+                            position[2] / (mesh.max_vertex[2] - mesh.min_vertex[2])
                         )
                     buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
                 
@@ -186,9 +186,9 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         position = vertex.position
                         if self.normalize_meshes:
                             position = (
-                                position[0] / (scene.max_vertex[0] - scene.min_vertex[0]),
-                                position[1] / (scene.max_vertex[1] - scene.min_vertex[1]),
-                                position[2] / (scene.max_vertex[2] - scene.min_vertex[2])
+                                position[0] / (mesh.max_vertex[0] - mesh.min_vertex[0]),
+                                position[1] / (mesh.max_vertex[1] - mesh.min_vertex[1]),
+                                position[2] / (mesh.max_vertex[2] - mesh.min_vertex[2])
                             )
                         buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
 
@@ -258,13 +258,13 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                     v = mesh.vertices[mesh.loops[i].vertex_index]
                     vertex = None
 
-                    scene.min_vertex[0] = min(scene.min_vertex[0], v.co.x)
-                    scene.min_vertex[1] = min(scene.min_vertex[1], v.co.y)
-                    scene.min_vertex[2] = min(scene.min_vertex[2], v.co.z)
+                    mesh_data.min_vertex[0] = min(mesh_data.min_vertex[0], v.co.x)
+                    mesh_data.min_vertex[1] = min(mesh_data.min_vertex[1], v.co.y)
+                    mesh_data.min_vertex[2] = min(mesh_data.min_vertex[2], v.co.z)
 
-                    scene.max_vertex[0] = max(scene.max_vertex[0], v.co.x)
-                    scene.max_vertex[1] = max(scene.max_vertex[1], v.co.y)
-                    scene.max_vertex[2] = max(scene.max_vertex[2], v.co.z)
+                    mesh_data.max_vertex[0] = max(mesh_data.max_vertex[0], v.co.x)
+                    mesh_data.max_vertex[1] = max(mesh_data.max_vertex[1], v.co.y)
+                    mesh_data.max_vertex[2] = max(mesh_data.max_vertex[2], v.co.z)
 
                     vertex = Vertex(v.co, n, uv_array[i].vector)
                     vertex.finalize()
