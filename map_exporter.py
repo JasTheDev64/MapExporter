@@ -5,7 +5,6 @@ from bpy_extras.io_utils import (ImportHelper, ExportHelper, orientation_helper,
 import bmesh
 from mathutils import Matrix
 
-import os
 import struct
 
 bl_info = {
@@ -234,7 +233,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
 
         for texture in bpy.data.images:
             if (texture.name != "Render Result"):
-                scene.texture_array.append(Texture(texture.name, os.path.basename(texture.filepath)))
+                scene.texture_array.append(Texture(texture.name, bpy.path.basename(texture.filepath)))
 
         for it in bpy.data.meshes:
             mesh = it.copy()
