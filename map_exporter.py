@@ -97,7 +97,10 @@ class Buffer:
         if (patch_name not in self.patch_list):
             raise Exception("patch name {} not found".format(patch_name))
         pos = self.patch_list.get(patch_name).pop(0)
-        self.data[pos : pos + 4] = struct.pack("=I", len(self.data) if (value == None) else value)
+        if (value == None):
+            self.data[pos : pos + 4] = struct.pack("=I", len(self.data))
+        else:
+            self.data[pos : pos + len(value)] = value
 
 class Map_Exporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.map"
@@ -140,7 +143,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
         buffer.add(struct.pack("=I", 0), "texture_array_count")
         buffer.add(struct.pack("=I", 0), "texture_array_offset")
 
-        buffer.patch("mesh_array_count", len(scene.mesh_array))
+        buffer.patch("mesh_array_count", struct.pack("=I", len(scene.mesh_array)))
         buffer.patch("mesh_array_offset")
         for mesh in scene.mesh_array:
             buffer.add(struct.pack("=I", 0), "name_offset")
@@ -155,7 +158,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             buffer.add(struct.pack("={}sB".format(len(mesh.name)), mesh.name.encode("utf-8"), 0))
 
             if self.index_meshes:
-                buffer.patch("vertex_array_count", len(mesh.vertex_set))
+                buffer.patch("vertex_array_count", struct.pack("=I", len(mesh.vertex_set)))
                 buffer.patch("vertex_array_offset")
                 for vertex in mesh.vertex_set:
                     position = vertex.position
@@ -167,14 +170,14 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         )
                     buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
                 
-                buffer.patch("polygon_array_count", len(mesh.polygon_array))
+                buffer.patch("polygon_array_count", struct.pack("=I", len(mesh.polygon_array)))
                 buffer.patch("polygon_array_offset")
                 for polygon in mesh.polygon_array:
                     buffer.add(struct.pack("=B{}I".format(len(polygon.indices)), len(polygon.indices), *polygon.indices))
                     if (len(polygon.indices) == 3):
                         buffer.add(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
             else:
-                buffer.patch("vertex_array_count", len(mesh.polygon_array) * 3)
+                buffer.patch("vertex_array_count", struct.pack("=I", len(mesh.polygon_array) * 3))
                 buffer.patch("vertex_array_offset")
 
                 for polygon in mesh.polygon_array:
@@ -191,25 +194,23 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                             )
                         buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
 
-        buffer.patch("node_array_count", len(scene.node_array))
+        buffer.patch("node_array_count", struct.pack("=I", len(scene.node_array)))
         buffer.patch("node_array_offset")
         for node in scene.node_array:
             buffer.add(struct.pack("=I", 0), "name_offset")
             buffer.add(struct.pack("=I", 0), "matrix_offset")
-            buffer.add(struct.pack("=I", 0), "parent_index")
-            buffer.add(struct.pack("=I", 0), "mesh_index")
+            buffer.add(struct.pack("=i", 0), "parent_index")
+            buffer.add(struct.pack("=i", 0), "mesh_index")
 
         for node in scene.node_array:
             buffer.patch("name_offset")
             buffer.add(struct.pack("={}sB".format(len(node.name)), node.name.encode("utf-8"), 0))
             buffer.patch("matrix_offset")
             buffer.add(struct.pack("=4f4f4f4f", *node.matrix[0], *node.matrix[1], *node.matrix[2], *node.matrix[3]))
-            buffer.patch("parent_index")
-            buffer.add(struct.pack("=i", node.parent_index))
-            buffer.patch("mesh_index")
-            buffer.add(struct.pack("=i", node.mesh_index))
+            buffer.patch("parent_index", struct.pack("=i", node.parent_index))
+            buffer.patch("mesh_index", struct.pack("=i", node.mesh_index))
 
-        buffer.patch("texture_array_count", len(scene.texture_array))
+        buffer.patch("texture_array_count", struct.pack("=I", len(scene.texture_array)))
         buffer.patch("texture_array_offset")
         for texture in scene.texture_array:
             buffer.add(struct.pack("=I", 0), "name_offset")
@@ -277,7 +278,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                     polygon.indices.append(index)
                 mesh_data.polygon_array.append(polygon)
             
-            mesh_map[mesh.name] = len(scene.mesh_array)
+            mesh_map[mesh_data.name] = len(scene.mesh_array)
             scene.mesh_array.append(mesh_data)
         
         for node in bpy.data.objects:
