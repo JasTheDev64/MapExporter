@@ -282,9 +282,10 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             scene.mesh_array.append(mesh_data)
         
         for node in bpy.data.objects:
-            parent = None if node.parent is None else node.parent.name
+            parent = node_map[node.parent.name] if (node.parent != None) else -1
+            mesh = mesh_map.get(node.data.name, -1) if (node.data != None) else -1
             node_map[node.name] = len(scene.node_array)
-            scene.node_array.append(Node(node.name, node_map[node.parent.name] if (node.parent != None) else -1, mesh_map.get(node.data.name, -1), node.matrix_local.transposed()))
+            scene.node_array.append(Node(node.name, parent, mesh, node.matrix_local.transposed()))
 
         return scene
 
