@@ -25,7 +25,7 @@ MAP_INDEX_FLAG = 0x00000001
 
 class Vertex:
     def __init__(self, p, n, uv):
-        self.position = tuple(p)
+        self.position = (p.x, p.z, -p.y) # Blender's Y and Z axis are swapped
         self.normal = tuple(n)
         self.uv = tuple(uv)
         self.hash_value = 0
@@ -42,12 +42,6 @@ class Vertex:
 class Polygon:
     def __init__(self):
         self.indices = []
-
-class Node:
-    def __init__(self, name, parent, transform):
-        self.name = name
-        self.parent = parent
-        self.transform = transform
 
 class Bone:
     def __init__(self, name, offset_matrix):
@@ -68,7 +62,12 @@ class Node:
         self.name = name
         self.mesh_index = mesh_index
         self.parent_index = parent_index
-        self.matrix = matrix
+        self.matrix = ( # Blender's Y and Z axis are swapped
+            (matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3]),
+            (matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]),
+            (-matrix[1][0], -matrix[1][1], -matrix[1][2], -matrix[1][3]),
+            (matrix[3][0], matrix[3][1], matrix[3][2], matrix[3][3])
+        )
 
 class Texture:
     def __init__(self, name, filename):
