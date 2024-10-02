@@ -21,7 +21,8 @@ bl_info = {
 
 MAP_SIGNATURE = 0x0050414D # 'MAP\0'
 
-MAP_INDEX_FLAG = 0x00000001
+MAP_FLAG__TRIANGULATED = 0x00000001
+MAP_FLAG__NORMALIZED   = 0x00000002
 
 NULL_MATRIX = [0] * 16
 
@@ -109,12 +110,6 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.map"
     bl_label = "Export Map"
 
-    index_meshes: BoolProperty(
-        name="Index",
-        description="Index all meshes.",
-        default=False
-    )
-
     triangulate_meshes: BoolProperty(
         name="Triangulate",
         description="Triangulate all meshes.",
@@ -134,8 +129,11 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
 
         flags = 0
 
-        if self.index_meshes:
-            flags |= MAP_INDEX_FLAG
+        if self.normalize_meshes:
+            flags |= MAP_FLAG__NORMALIZED
+
+        if self.triangulate_meshes:
+            flags |= MAP_FLAG__TRIANGULATED
 
         buffer.add(struct.pack("=I", MAP_SIGNATURE))
         buffer.add(struct.pack("=I", flags)) # info
@@ -161,42 +159,24 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             buffer.patch("name.offset")
             buffer.add(struct.pack("={}sB".format(len(mesh.name)), mesh.name.encode("utf-8"), 0))
 
-            if self.index_meshes:
-                buffer.patch("vertex_array.length", struct.pack("=I", len(mesh.vertex_set)))
-                buffer.patch("vertex_array.offset")
-                for vertex in mesh.vertex_set:
-                    position = vertex.position
-                    if self.normalize_meshes:
-                        position = (
-                            position[0] / (mesh.max_vertex[0] - mesh.min_vertex[0]),
-                            position[1] / (mesh.max_vertex[1] - mesh.min_vertex[1]),
-                            position[2] / (mesh.max_vertex[2] - mesh.min_vertex[2])
-                        )
-                    buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
-                
-                buffer.patch("polygon_array.length", struct.pack("=I", len(mesh.polygon_array)))
-                buffer.patch("polygon_array.offset")
-                for polygon in mesh.polygon_array:
-                    buffer.add(struct.pack("=B{}I".format(len(polygon.indices)), len(polygon.indices), *polygon.indices))
-                    if (len(polygon.indices) == 3):
-                        buffer.add(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
-            else:
-                buffer.patch("vertex_array.length", struct.pack("=I", len(mesh.polygon_array) * 3))
-                buffer.patch("vertex_array.offset")
-
-                for polygon in mesh.polygon_array:
-                    if (len(polygon.indices) != 3):
-                        raise Exception("Unindexed meshes can only have triangles")
-                    for i in range(0, 3):
-                        vertex = mesh.vertex_set[polygon.indices[i]]
-                        position = vertex.position
-                        if self.normalize_meshes:
-                            position = (
-                                position[0] / (mesh.max_vertex[0] - mesh.min_vertex[0]),
-                                position[1] / (mesh.max_vertex[1] - mesh.min_vertex[1]),
-                                position[2] / (mesh.max_vertex[2] - mesh.min_vertex[2])
-                            )
-                        buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
+            buffer.patch("vertex_array.length", struct.pack("=I", len(mesh.vertex_set)))
+            buffer.patch("vertex_array.offset")
+            for vertex in mesh.vertex_set:
+                position = vertex.position
+                if self.normalize_meshes:
+                    position = (
+                        position[0] / (mesh.max_vertex[0] - mesh.min_vertex[0]),
+                        position[1] / (mesh.max_vertex[1] - mesh.min_vertex[1]),
+                        position[2] / (mesh.max_vertex[2] - mesh.min_vertex[2])
+                    )
+                buffer.add(struct.pack("=3f3f2f", *position, *vertex.normal, *vertex.uv))
+            
+            buffer.patch("polygon_array.length", struct.pack("=I", len(mesh.polygon_array)))
+            buffer.patch("polygon_array.offset")
+            for polygon in mesh.polygon_array:
+                buffer.add(struct.pack("=B{}I".format(len(polygon.indices)), len(polygon.indices), *polygon.indices))
+                if (len(polygon.indices) == 3):
+                    buffer.add(struct.pack("=I", 0)) # if there are only 3 indices, pad to 4
 
         buffer.patch("node_array.length", struct.pack("=I", len(scene.node_array)))
         buffer.patch("node_array.offset")
