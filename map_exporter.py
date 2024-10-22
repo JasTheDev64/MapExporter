@@ -110,9 +110,9 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.map"
     bl_label = "Export Map"
 
-    triangulate_meshes: BoolProperty(
-        name="Triangulate",
-        description="Triangulate all meshes.",
+    assert_triangulation: BoolProperty(
+        name="Assert Triangulation",
+        description="Ensure all polygons are triangles.",
         default=False
     )
     
@@ -132,7 +132,7 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
         if self.normalize_meshes:
             flags |= MAP_FLAG__NORMALIZED
 
-        if self.triangulate_meshes:
+        if self.assert_triangulation:
             flags |= MAP_FLAG__TRIANGULATED
 
         buffer.add(struct.pack("=I", MAP_SIGNATURE))
@@ -226,19 +226,10 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             if (texture.name != "Render Result"):
                 scene.texture_array.append(Texture(texture.name, bpy.path.basename(texture.filepath)))
 
-        for it in bpy.data.meshes:
-            mesh = it.copy()
-
-            if self.triangulate_meshes:
-                bm = bmesh.new()
-                bm.from_mesh(mesh)
-                bmesh.ops.triangulate(bm, faces=bm.faces)
-                bm.to_mesh(mesh)
-                bm.free()
-
+        for mesh in bpy.data.meshes:
             uv_array = mesh.uv_layers.active.uv
 
-            mesh_data = Mesh(it.name)
+            mesh_data = Mesh(mesh.name)
             for p in mesh.polygons:
                 if p.loop_total != 3 and p.loop_total != 4:
                     raise Exception("mesh has unsupported polygons (count={})".format(p.loop_total))
@@ -266,6 +257,8 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         mesh_data.vertex_map[vertex] = index
                         mesh_data.vertex_set.append(vertex)
                     polygon.indices.append(index)
+                if self.assert_triangulation and (len(polygon.indices) != 3):
+                    raise Exception("Polygon in mesh {} not triangulated".format(mesh.name))
                 mesh_data.polygon_array.append(polygon)
             
             mesh_map[mesh_data.name] = len(scene.mesh_array)
