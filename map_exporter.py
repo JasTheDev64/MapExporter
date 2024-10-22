@@ -233,6 +233,8 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
             for p in mesh.polygons:
                 if p.loop_total != 3 and p.loop_total != 4:
                     raise Exception("mesh has unsupported polygons (count={})".format(p.loop_total))
+                elif self.assert_triangulation and (p.loop_total != 3):
+                    raise Exception("Polygon in mesh {} not triangulated".format(mesh.name))
 
                 polygon = Polygon()
                 for i in range(p.loop_start, p.loop_start + p.loop_total):
@@ -257,8 +259,6 @@ class Map_Exporter(bpy.types.Operator, ExportHelper):
                         mesh_data.vertex_map[vertex] = index
                         mesh_data.vertex_set.append(vertex)
                     polygon.indices.append(index)
-                if self.assert_triangulation and (len(polygon.indices) != 3):
-                    raise Exception("Polygon in mesh {} not triangulated".format(mesh.name))
                 mesh_data.polygon_array.append(polygon)
             
             mesh_map[mesh_data.name] = len(scene.mesh_array)
